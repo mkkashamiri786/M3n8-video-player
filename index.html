@@ -1,108 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>M3U8 Player</title>
-
-  <!-- Video.js CSS -->
-  <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
-
+  <link href="https://vjs.zencdn.net/8.6.1/video-js.css" rel="stylesheet" />
   <style>
     body {
       background: #000;
-      color: #fff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
       margin: 0;
-      font-family: Arial, sans-serif;
+      color: white;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
     }
     .player-container {
       width: 90%;
-      max-width: 900px;
+      max-width: 800px;
       position: relative;
     }
-    #player {
+    video {
       width: 100%;
-      height: 500px;
-      border-radius: 12px;
+      height: auto;
+      border-radius: 10px;
       overflow: hidden;
     }
     .logo {
       position: absolute;
-      top: 15px;
-      left: 15px;
+      top: 10px;
+      left: 10px;
       background: rgba(0,0,0,0.6);
-      padding: 6px 10px;
-      border-radius: 8px;
-      font-weight: bold;
-    }
-    .input-box {
-      margin-top: 15px;
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-    }
-    input {
-      width: 70%;
-      padding: 10px;
-      border-radius: 8px;
-      border: none;
-    }
-    button {
-      padding: 10px 15px;
-      border: none;
-      border-radius: 8px;
-      background: #2196f3;
-      color: #fff;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #0d8bf2;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
 
   <div class="player-container">
-    <div class="logo">M3U8 Player</div>
-    
-    <video id="player" class="video-js vjs-default-skin" controls preload="auto" poster="">
-      <!-- No link added intentionally -->
-    </video>
+    <div class="logo">🎥 HASI TV Player</div>
+    <video
+      id="videoPlayer"
+      class="video-js vjs-default-skin"
+      controls
+      preload="auto"
+      autoplay
+      playsinline
+    ></video>
+  </div>
 
-
-  <!-- Video.js Script -->
-  <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+  <script src="https://vjs.zencdn.net/8.6.1/video.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-
   <script>
-    const player = videojs('player');
+    // URL parameter se m3u8 link lena
+    const params = new URLSearchParams(window.location.search);
+    const videoUrl = params.get('url');
 
-    function loadStream() {
-      const link = document.getElementById('m3u8Link').value.trim();
-      if (!link) {
-        alert("Please enter a valid M3U8 link.");
-        return;
-      }
+    const player = videojs('videoPlayer');
 
-      if (player.src()) player.pause();
-
-      // Check if browser supports native HLS
-      if (player.canPlayType('application/vnd.apple.mpegurl')) {
-        player.src({ src: link, type: 'application/x-mpegURL' });
+    if (videoUrl) {
+      if (videojs.browser.IS_SAFARI) {
+        // Safari directly plays m3u8
+        player.src({ src: videoUrl, type: 'application/x-mpegURL' });
       } else if (Hls.isSupported()) {
         const hls = new Hls();
-        hls.loadSource(link);
+        hls.loadSource(videoUrl);
         hls.attachMedia(player.tech().el_);
       } else {
         alert("Your browser does not support HLS playback.");
       }
-
-      player.play();
+    } else {
+      alert("No 'url' parameter found in link!");
     }
   </script>
 </body>
