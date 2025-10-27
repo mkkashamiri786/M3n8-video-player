@@ -3,79 +3,208 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>M3U8 Player</title>
+  <title>HASI TV M3U8 Player</title>
+
+  <!-- Video.js CSS -->
   <link href="https://vjs.zencdn.net/8.6.1/video-js.css" rel="stylesheet" />
+
   <style>
     body {
-      background: #000;
       margin: 0;
-      color: white;
-      font-family: sans-serif;
+      background: radial-gradient(circle at top, #111 0%, #000 100%);
+      color: #fff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       height: 100vh;
-    }
-    .player-container {
-      width: 90%;
-      max-width: 800px;
-      position: relative;
-    }
-    video {
-      width: 100%;
-      height: auto;
-      border-radius: 10px;
       overflow: hidden;
     }
+
+    .player-container {
+      width: 90%;
+      max-width: 900px;
+      position: relative;
+      box-shadow: 0 0 30px rgba(0, 255, 150, 0.4);
+      border-radius: 15px;
+      overflow: hidden;
+      transition: all 0.3s ease-in-out;
+    }
+
+    .player-container:hover {
+      box-shadow: 0 0 50px rgba(0, 255, 255, 0.6);
+      transform: scale(1.01);
+    }
+
+    .video-js {
+      width: 100%;
+      border-radius: 15px;
+    }
+
     .logo {
       position: absolute;
       top: 10px;
       left: 10px;
-      background: rgba(0,0,0,0.6);
-      padding: 5px 10px;
-      border-radius: 5px;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 5px 12px;
+      border-radius: 8px;
       font-size: 14px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      backdrop-filter: blur(5px);
+      z-index: 1;
+    }
+
+    footer {
+      position: fixed;
+      bottom: 10px;
+      text-align: center;
+      font-size: 13px;
+      color: #0ff;
+      opacity: 0.7;
+      letter-spacing: 0.5px;
+    }
+
+    footer span {
+      color: #0f0;
+      font-weight: bold;
+    }
+
+    /* Custom Play Button Glow */
+    .vjs-big-play-button {
+      background: rgba(0, 255, 150, 0.2);
+      border: 2px solid #0f0;
+      border-radius: 50%;
+      transition: all 0.3s ease-in-out;
+    }
+
+    .vjs-big-play-button:hover {
+      background: rgba(0, 255, 150, 0.5);
+      box-shadow: 0 0 20px #0f0;
+    }
+    
+    .error-message {
+      color: #ff5555;
+      text-align: center;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.7);
+      border-radius: 10px;
+      margin: 20px;
+      max-width: 500px;
     }
   </style>
 </head>
 <body>
 
   <div class="player-container">
-    <div class="logo">🎥 HASI TV Player</div>
     <video
       id="videoPlayer"
       class="video-js vjs-default-skin"
       controls
+      Poster="https://bit.ly/Shaheen-TV-Img"
       preload="auto"
-      autoplay
       playsinline
     ></video>
   </div>
 
+  <footer>
+    Creative by <span>Shaheen TV Developers</span>
+  </footer>
+
+  <!-- Scripts -->
   <script src="https://vjs.zencdn.net/8.6.1/video.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
   <script>
-    // URL parameter se m3u8 link lena
-    const params = new URLSearchParams(window.location.search);
-    const videoUrl = params.get('url');
+    // Wait for DOM to be fully loaded
+    document.addEventListener('DOMContentLoaded', function() {
+      const params = new URLSearchParams(window.location.search);
+      const videoUrl = params.get('url');
+      
+      // Initialize Video.js player
+      const player = videojs('videoPlayer', {
+        html5: {
+          vhs: {
+            overrideNative: true
+          }
+        }
+      });
+      
+      // Set player dimensions
+      player.width('100%');
+      player.height('100%');
 
-    const player = videojs('videoPlayer');
-
-    if (videoUrl) {
-      if (videojs.browser.IS_SAFARI) {
-        // Safari directly plays m3u8
-        player.src({ src: videoUrl, type: 'application/x-mpegURL' });
-      } else if (Hls.isSupported()) {
-        const hls = new Hls();
-        hls.loadSource(videoUrl);
-        hls.attachMedia(player.tech().el_);
+      if (videoUrl) {
+        try {
+          // Check for HLS support and play the video
+          if (Hls.isSupported()) {
+            const hls = new Hls({
+              debug: false,
+              enableWorker: false // Disable worker to improve performance
+            });
+            
+            hls.loadSource(videoUrl);
+            hls.attachMedia(player.tech().el_);
+            
+            hls.on(Hls.Events.MANIFEST_PARSED, function() {
+              player.play().catch(e => {
+                console.log("Autoplay prevented:", e);
+              });
+            });
+            
+            hls.on(Hls.Events.ERROR, function(event, data) {
+              if (data.fatal) {
+                switch(data.type) {
+                  case Hls.ErrorTypes.NETWORK_ERROR:
+                    console.error("Network error occurred, trying to recover");
+                    hls.startLoad();
+                    break;
+                  case Hls.ErrorTypes.MEDIA_ERROR:
+                    console.error("Media error occurred, trying to recover");
+                    hls.recoverMediaError();
+                    break;
+                  default:
+                    console.error("Fatal error, cannot recover");
+                    showError("Unable to play this video stream");
+                    break;
+                }
+              }
+            });
+            
+          } else if (player.canPlayType('application/vnd.apple.mpegurl')) {
+            // For Safari and other browsers with native HLS support
+            player.src({
+              src: videoUrl,
+              type: 'application/x-mpegURL'
+            });
+            
+            player.ready(function() {
+              player.play().catch(e => {
+                console.log("Autoplay prevented:", e);
+              });
+            });
+          } else {
+            showError("Your browser does not support HLS playback.");
+          }
+          
+        } catch (error) {
+          console.error("Error initializing player:", error);
+          showError("Error loading video stream");
+        }
       } else {
-        alert("Your browser does not support HLS playback.");
+        showError("No 'url' parameter found in link! Please provide a valid M3U8 URL.");
       }
-    } else {
-      alert("No 'url' parameter found in link!");
-    }
+      
+      function showError(message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error-message';
+        errorDiv.textContent = message;
+        document.body.appendChild(errorDiv);
+      }
+    });
   </script>
+
 </body>
 </html>
